@@ -17,16 +17,9 @@
 
 // LTL formulas to be verified
 // Formula p1 holds if the first ship can always eventually enter the lock when going up.
-ltl p1 { []<> (ship_status[0] == go_up_in_lock) } /*  */  
-// Formula d1
-// I do not use request because when you go up then you request it
-ltl d1 { []((doors_status.lower == closed  && ship_status[0] == go_up) -> (<>ship_status[0] == go_up_in_lock))}
-ltl d2 { []((doors_status.higher == closed  && ship_status[0] == go_down) -> (<>ship_status[0] == go_down_in_lock))}
-ltl b1 {[](doors_status.lower == open -> slide_status.higher == closed)}
-ltl b2 {[](doors_status.higher == open -> slide_status.lower == closed)}
-ltl c1 {[](doors_status.lower == open -> lock_water_level == low)}
-ltl c2 {[](doors_status.higher == open -> lock_water_level == high)}
-
+// ltl p1 { []<> (ship_status[0] == go_down) } /*  */  
+ltl d1 { []((doors_status.lower == closed  && ship_status[0] == go_up) -> (<>(ship_status[0] == go_up_in_lock)))}
+//ltl d2 { []((doors_status.higher == closed  && ship_status[0] == go_down) -> (<>ship_status[0] == go_down_in_lock))}
 // Type for direction of ship.
 mtype:direction = { go_down, go_down_in_lock, go_up, go_up_in_lock, goal_reached };
 
@@ -83,7 +76,7 @@ proctype lock(byte lockid) {
 	do
 	:: change_doors_pos?low ->
     	if
-    	:: doors_status.lower == closed -> doors_status.lower = open;
+    	:: doors_status.lower == closed -> doors_status.lower = open;   
         	lock_water_level = low_level;
     	:: doors_status.lower == open -> doors_status.lower = closed;
     	fi;
@@ -236,6 +229,12 @@ proctype main_control() {
 	:: request_low?true ->
     	if
     	:: doors_status.lower == closed ->  
+            do
+            ::doors_status.higher == open ->  
+                change_doors_pos!high; doors_pos_changed?true;
+            ::doors_status.higher == closed -> 
+                break;
+            od; 
         	do
         	::lock_water_level == high ->
             	change_slide_pos!low; slide_pos_changed?true;
@@ -249,17 +248,17 @@ proctype main_control() {
         	change_doors_pos!low; doors_pos_changed?true;
     	:: doors_status.lower == open -> skip;
     	fi;
-    	do
-    	::(ship_status[0] == go_down_in_lock || ship_status[0] == go_up_in_lock) &&  lock_is_occupied == true ->
-        	change_doors_pos!low; doors_pos_changed?true;
-    	::(ship_status[0] == go_down || ship_status[0] == go_up) &&  lock_is_occupied == false ->
-        	skip;
-    	od;
     	observed_low[0]?true;
 
 	:: request_high?true ->
     	if
     	:: doors_status.higher== closed ->  
+            do
+            ::doors_status.lower == open ->  
+                change_doors_pos!low; doors_pos_changed?true;
+            ::doors_status.lower == closed -> 
+                break;
+            od; 
         	do
         	::lock_water_level == low ->
             	change_slide_pos!high; slide_pos_changed?true;
@@ -273,12 +272,6 @@ proctype main_control() {
         	change_doors_pos!high; doors_pos_changed?true;
     	:: doors_status.higher == open -> skip;
     	fi;
-    	do
-    	::(ship_status[0] == go_down_in_lock || ship_status[0] == go_up_in_lock) &&  lock_is_occupied == true ->
-        	change_doors_pos!high; doors_pos_changed?true;
-    	::(ship_status[0] == go_down || ship_status[0] == go_up) &&  lock_is_occupied == false ->
-        	skip;
-    	od;
     	observed_high[0]?true;
 	od;
 }
@@ -340,5 +333,7 @@ init {
     	od;
 	}
 }
+
+
 
 
