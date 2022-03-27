@@ -135,10 +135,10 @@ proctype ship(byte shipid) {
                     	ship_status[shipid] = go_down_in_lock;
                     	lock_is_occupied[ship_pos[shipid] - 1] = true;
                     	nr_of_ships_at_pos[ship_pos[shipid]]--;
-                    	observed_high[0]!true;
+                    	observed_high[ship_pos[shipid] - 1]!true;
                     	break;
             	:: lock_is_occupied[ship_pos[shipid] - 1] ->
-                    	observed_high[0]!true;
+                    	observed_high[ship_pos[shipid] - 1]!true;
             	fi; }
     	:: atomic { doors_status[ship_pos[shipid] - 1].higher == open &&
         	!lock_is_occupied[ship_pos[shipid] - 1] ->
@@ -159,11 +159,11 @@ proctype ship(byte shipid) {
                     	lock_is_occupied[ship_pos[shipid] - 1] = false;
                     	ship_pos[shipid]--;
                     	nr_of_ships_at_pos[ship_pos[shipid]]++;
-                    	observed_low[0]!true;
+                    	observed_low[ship_pos[shipid] - 1]!true;
                     	break;
             	:: (nr_of_ships_at_pos[ship_pos[shipid] - 1] == MAX
                 	&& ship_pos[shipid] - 1 != 0) ->
-                    	observed_low[0]!true;
+                    	observed_low[ship_pos[shipid] - 1]!true;
             	fi; }
     	:: atomic { doors_status[ship_pos[shipid] - 1].lower == open &&
         	(nr_of_ships_at_pos[ship_pos[shipid] - 1] < MAX
@@ -184,10 +184,10 @@ proctype ship(byte shipid) {
                     	ship_status[shipid] = go_up_in_lock;
                     	lock_is_occupied[ship_pos[shipid]] = true;
                     	nr_of_ships_at_pos[ship_pos[shipid]]--;
-                    	observed_low[0]!true;
+                    	observed_low[ship_pos[shipid]]!true;
                     	break;
             	:: lock_is_occupied[ship_pos[shipid]] ->
-                    	observed_low[0]!true;
+                    	observed_low[ship_pos[shipid]]!true;
             	fi; }
     	:: atomic { doors_status[ship_pos[shipid]].lower == open &&
         	!lock_is_occupied[ship_pos[shipid]] ->
@@ -208,11 +208,11 @@ proctype ship(byte shipid) {
                     	lock_is_occupied[ship_pos[shipid]] = false;
                     	ship_pos[shipid]++;
                     	nr_of_ships_at_pos[ship_pos[shipid]]++;
-                    	observed_high[0]!true;
+                    	observed_high[ship_pos[shipid]]!true;
                     	break;
             	:: (nr_of_ships_at_pos[ship_pos[shipid]+1] == MAX
                 	&& ship_pos[shipid]+1 != N) ->
-                    	observed_high[0]!true;
+                    	observed_high[ship_pos[shipid]]!true;
             	fi; }
     	:: atomic { doors_status[ship_pos[shipid]].higher == open &&
         	(nr_of_ships_at_pos[ship_pos[shipid]+1] < MAX
@@ -233,6 +233,7 @@ proctype ship(byte shipid) {
 proctype lock_receive(byte index) {
     do   
     :: request_low[index]?true ->
+    atomic{
         if
         :: doors_status[index].lower == closed ->  
             if
@@ -249,13 +250,28 @@ proctype lock_receive(byte index) {
             ::lock_water_level[index] == high_level ->
                 change_slide_pos[index]!low; slide_pos_changed[index]?true;
             ::lock_water_level[index] == low_level -> skip;
-            fi; 
+            fi;
+            // if 
+            // :: index > 0 -> 
+            //     if
+            //     ::doors_status[index-1].higher == open ->  
+            //         change_doors_pos[index-1]!high; doors_pos_changed[index-1]?true;
+            //     ::doors_status[index-1].higher == closed -> skip;
+            //     fi; 
+            //     if
+            //     ::slide_status[index-1].higher == open ->
+            //         change_slide_pos[index-1]!high; slide_pos_changed[index-1]?true;
+            //     ::slide_status[index-1].higher == closed -> skip; 
+            //     fi;
+            // :: index == 0 -> skip; 
+            // fi; 
         change_doors_pos[index]!low; doors_pos_changed[index]?true;
         :: doors_status[index].lower == open -> skip;
         fi;
-        observed_low[index]?true;   
+        observed_low[index]?true;}
 
     :: request_high[index]?true ->
+        atomic {
         if
         :: doors_status[index].higher== closed ->  
             if
@@ -266,6 +282,7 @@ proctype lock_receive(byte index) {
             if
             ::slide_status[index].lower == open ->
                 change_slide_pos[index]!low; slide_pos_changed[index]?true;
+            ::slide_status[index].lower == closed -> skip;
             fi;
             if
             ::lock_water_level[index] == low_level ->
@@ -275,7 +292,21 @@ proctype lock_receive(byte index) {
         change_doors_pos[index]!high; doors_pos_changed[index]?true;
         :: doors_status[index].higher == open -> skip;
         fi;
-        observed_high[index]?true;         
+        // if 
+        // :: index < N-1  -> 
+        //     if
+        //     ::doors_status[index+1].lower == open ->  
+        //         change_doors_pos[index+1]!high; doors_pos_changed[index+1]?true;
+        //     ::doors_status[index+1].lower == closed -> skip;
+        //     fi; 
+        //     if
+        //     ::slide_status[index+1].lower == open ->
+        //         change_slide_pos[index+1]!high; slide_pos_changed[index+1]?true;
+        //     ::slide_status[index+1].lower == closed -> skip; 
+        //     fi;
+        // :: index == N-1 -> skip; 
+        // fi; 
+        observed_high[index]?true;}        
     od;    
 } 
 
@@ -283,12 +314,13 @@ proctype lock_receive(byte index) {
 // requests of ships!
 proctype main_control() {
     byte index = 0;
+    atomic { 
     do
     :: index < N ->
         run lock_receive(index);
         index++ 
-    :: index == N -> index = 0; break;
-    od;
+    :: index == N -> break;
+    od;}
 }
 
 proctype monitor() {
@@ -312,7 +344,7 @@ proctype monitor() {
 init {
 	byte proc;
 	atomic {
-    	run monitor();
+    	//run monitor();
     	run main_control();
     	// In the code below, the individual locks are initialised.
     	// The assumption here is that N == 1. When generalising the model for
