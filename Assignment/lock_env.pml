@@ -266,6 +266,7 @@ proctype main_control() {
             if
             ::slide_status.lower == open ->
                 change_slide_pos!low; slide_pos_changed?true;
+            ::slide_status.lower == closed -> skip;
             fi;
         	if
         	::lock_water_level == low_level ->
