@@ -159,7 +159,8 @@ proctype ship(byte shipid) {
                     	lock_is_occupied[ship_pos[shipid] - 1] = false;
                     	ship_pos[shipid]--;
                     	nr_of_ships_at_pos[ship_pos[shipid]]++;
-                    	observed_low[ship_pos[shipid] - 1]!true;
+                        //This is without the minus sign
+                    	observed_low[ship_pos[shipid]]!true;
                     	break;
             	:: (nr_of_ships_at_pos[ship_pos[shipid] - 1] == MAX
                 	&& ship_pos[shipid] - 1 != 0) ->
@@ -208,7 +209,8 @@ proctype ship(byte shipid) {
                     	lock_is_occupied[ship_pos[shipid]] = false;
                     	ship_pos[shipid]++;
                     	nr_of_ships_at_pos[ship_pos[shipid]]++;
-                    	observed_high[ship_pos[shipid]]!true;
+                        //This has to minus one
+                    	observed_high[ship_pos[shipid]-1]!true;
                     	break;
             	:: (nr_of_ships_at_pos[ship_pos[shipid]+1] == MAX
                 	&& ship_pos[shipid]+1 != N) ->
