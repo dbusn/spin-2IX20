@@ -9,15 +9,15 @@
 */
 
 // The number of locks.
-#define N	2
+#define N	1
 // The number of ships.
-#define M	3
+#define M	1
 // The maximum number of ships immediately at either side of a lock.
 #define MAX 2
 
 // LTL formulas to be verified
 // Formula p1 holds if the first ship can always eventually enter the lock when going up.
-// ltl p1 { []<> (ship_status[0] == go_down) } /*  */  
+ltl p1 { []<> (ship_status[0] == go_down) } /*  */  
 //ltl d1 { []((doors_status.lower == closed  && ship_status[0] == go_up) -> (<>(ship_status[0] == go_up_in_lock)))}
 //ltl d2 { []((doors_status.higher == closed  && ship_status[0] == go_down) -> (<>ship_status[0] == go_down_in_lock))}
 //ltl b1 {[](doors_status.lower == open -> slide_status.higher == closed)}
@@ -50,12 +50,12 @@ typedef slides_t {
 }
 
 // Asynchronous channels to handle ship requests.
-chan request_low[N] = [M] of { bool };
-chan request_high[N] = [M] of { bool };
+chan request_low = [M] of { byte };
+chan request_high = [M] of { byte };
 // Synchronous channels to indicate that a ship has seen that a particular pair
 // of doors has opened.
-chan observed_low[N] = [0] of { bool };
-chan observed_high[N] = [0] of { bool };
+chan observed_low = [0] of { byte };
+chan observed_high = [0] of { byte };
 
 // Status of the water level inside a lock.
 mtype:level lock_water_level[N];
@@ -128,17 +128,17 @@ proctype ship(byte shipid) {
         // in here lockid is ship_pos[shipid - 1]
     	:: doors_status[ship_pos[shipid] - 1].higher == closed ->
             // This is the position of the lock
-        	request_high[ship_pos[shipid] - 1]!true;
+        	request_high!(ship_pos[shipid] - 1);
         	atomic { doors_status[ship_pos[shipid] - 1].higher == open ->
             	if
             	:: !lock_is_occupied[ship_pos[shipid] - 1] ->
                     	ship_status[shipid] = go_down_in_lock;
                     	lock_is_occupied[ship_pos[shipid] - 1] = true;
                     	nr_of_ships_at_pos[ship_pos[shipid]]--;
-                    	observed_high[ship_pos[shipid] - 1]!true;
+                    	observed_high!(ship_pos[shipid] - 1);
                     	break;
             	:: lock_is_occupied[ship_pos[shipid] - 1] ->
-                    	observed_high[ship_pos[shipid] - 1]!true;
+                    	observed_high!(ship_pos[shipid] - 1);
             	fi; }
     	:: atomic { doors_status[ship_pos[shipid] - 1].higher == open &&
         	!lock_is_occupied[ship_pos[shipid] - 1] ->
@@ -150,7 +150,7 @@ proctype ship(byte shipid) {
 	:: ship_status[shipid] == go_down_in_lock ->
     	do
     	:: doors_status[ship_pos[shipid] - 1].lower == closed ->
-        	request_low[ship_pos[shipid] - 1]!true;
+        	request_low!(ship_pos[shipid] - 1);
         	atomic { doors_status[ship_pos[shipid] - 1].lower == open ->
             	if
             	:: (nr_of_ships_at_pos[ship_pos[shipid] - 1] < MAX
@@ -160,11 +160,11 @@ proctype ship(byte shipid) {
                     	ship_pos[shipid]--;
                     	nr_of_ships_at_pos[ship_pos[shipid]]++;
                         //This is without the minus sign
-                    	observed_low[ship_pos[shipid]]!true;
+                    	observed_low!(ship_pos[shipid] - 1);
                     	break;
             	:: (nr_of_ships_at_pos[ship_pos[shipid] - 1] == MAX
                 	&& ship_pos[shipid] - 1 != 0) ->
-                    	observed_low[ship_pos[shipid] - 1]!true;
+                    	observed_low!(ship_pos[shipid]-1);
             	fi; }
     	:: atomic { doors_status[ship_pos[shipid] - 1].lower == open &&
         	(nr_of_ships_at_pos[ship_pos[shipid] - 1] < MAX
@@ -178,17 +178,17 @@ proctype ship(byte shipid) {
 	:: ship_status[shipid] == go_up && ship_pos[shipid] != N ->
     	do
     	:: doors_status[ship_pos[shipid]].lower == closed ->
-        	request_low[ship_pos[shipid]]!true;
+        	request_low!(ship_pos[shipid]);
         	atomic { doors_status[ship_pos[shipid]].lower == open ->
             	if
             	:: !lock_is_occupied[ship_pos[shipid]] ->
                     	ship_status[shipid] = go_up_in_lock;
                     	lock_is_occupied[ship_pos[shipid]] = true;
                     	nr_of_ships_at_pos[ship_pos[shipid]]--;
-                    	observed_low[ship_pos[shipid]]!true;
+                    	observed_low!(ship_pos[shipid]);
                     	break;
             	:: lock_is_occupied[ship_pos[shipid]] ->
-                    	observed_low[ship_pos[shipid]]!true;
+                    	observed_low!(ship_pos[shipid]);
             	fi; }
     	:: atomic { doors_status[ship_pos[shipid]].lower == open &&
         	!lock_is_occupied[ship_pos[shipid]] ->
@@ -200,7 +200,7 @@ proctype ship(byte shipid) {
 	:: ship_status[shipid] == go_up_in_lock ->
     	do
     	:: doors_status[ship_pos[shipid]].higher == closed ->
-        	request_high[ship_pos[shipid]]!true;
+        	request_high!(ship_pos[shipid]);
         	atomic { doors_status[ship_pos[shipid]].higher == open ->
             	if
             	:: (nr_of_ships_at_pos[ship_pos[shipid]+1] < MAX
@@ -210,11 +210,11 @@ proctype ship(byte shipid) {
                     	ship_pos[shipid]++;
                     	nr_of_ships_at_pos[ship_pos[shipid]]++;
                         //This has to minus one
-                    	observed_high[ship_pos[shipid]-1]!true;
+                    	observed_high!(ship_pos[shipid]-1);
                     	break;
             	:: (nr_of_ships_at_pos[ship_pos[shipid]+1] == MAX
                 	&& ship_pos[shipid]+1 != N) ->
-                    	observed_high[ship_pos[shipid]]!true;
+                    	observed_high!(ship_pos[shipid]);
             	fi; }
     	:: atomic { doors_status[ship_pos[shipid]].higher == open &&
         	(nr_of_ships_at_pos[ship_pos[shipid]+1] < MAX
@@ -315,14 +315,84 @@ proctype lock_receive(byte index) {
 // DUMMY main control process type. Remodel it to control the lock system and handle
 // requests of ships!
 proctype main_control() {
-    byte index = 0;
-    atomic { 
-    do
-    :: index < N ->
-        run lock_receive(index);
-        index++ 
-    :: index == N -> break;
-    od;}
+    byte index;
+    do   
+    :: request_low?(index) ->
+    atomic{
+        if
+        :: doors_status[index].lower == closed ->  
+            if
+            ::doors_status[index].higher == open ->  
+                change_doors_pos[index]!high; doors_pos_changed[index]?true;
+            ::doors_status[index].higher == closed -> skip;
+            fi; 
+            if
+            ::slide_status[index].higher == open ->
+                change_slide_pos[index]!high; slide_pos_changed[index]?true;
+            ::slide_status[index].higher == closed -> skip; 
+            fi;
+            if
+            ::lock_water_level[index] == high_level ->
+                change_slide_pos[index]!low; slide_pos_changed[index]?true;
+            ::lock_water_level[index] == low_level -> skip;
+            fi;
+            // if 
+            // :: index > 0 -> 
+            //     if
+            //     ::doors_status[index-1].higher == open ->  
+            //         change_doors_pos[index-1]!high; doors_pos_changed[index-1]?true;
+            //     ::doors_status[index-1].higher == closed -> skip;
+            //     fi; 
+            //     if
+            //     ::slide_status[index-1].higher == open ->
+            //         change_slide_pos[index-1]!high; slide_pos_changed[index-1]?true;
+            //     ::slide_status[index-1].higher == closed -> skip; 
+            //     fi;
+            // :: index == 0 -> skip; 
+            // fi; 
+        change_doors_pos[index]!low; doors_pos_changed[index]?true;
+        :: doors_status[index].lower == open -> skip;
+        fi;
+        observed_low?(index);}
+
+    :: request_high?(index) ->
+        atomic {
+        if
+        :: doors_status[index].higher== closed ->  
+            if
+            ::doors_status[index].lower == open ->  
+                change_doors_pos[index]!low; doors_pos_changed[index]?true;
+            ::doors_status[index].lower == closed -> skip;
+            fi; 
+            if
+            ::slide_status[index].lower == open ->
+                change_slide_pos[index]!low; slide_pos_changed[index]?true;
+            ::slide_status[index].lower == closed -> skip;
+            fi;
+            if
+            ::lock_water_level[index] == low_level ->
+                change_slide_pos[index]!high; slide_pos_changed[index]?true;
+            ::lock_water_level[index] == high_level -> skip; 
+            fi;
+        change_doors_pos[index]!high; doors_pos_changed[index]?true;
+        :: doors_status[index].higher == open -> skip;
+        fi;
+        // if 
+        // :: index < N-1  -> 
+        //     if
+        //     ::doors_status[index+1].lower == open ->  
+        //         change_doors_pos[index+1]!high; doors_pos_changed[index+1]?true;
+        //     ::doors_status[index+1].lower == closed -> skip;
+        //     fi; 
+        //     if
+        //     ::slide_status[index+1].lower == open ->
+        //         change_slide_pos[index+1]!high; slide_pos_changed[index+1]?true;
+        //     ::slide_status[index+1].lower == closed -> skip; 
+        //     fi;
+        // :: index == N-1 -> skip; 
+        // fi; 
+        observed_high?(index);}        
+    od;    
 }
 
 proctype monitor() {
