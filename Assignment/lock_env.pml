@@ -16,16 +16,10 @@
 #define MAX 2
 
 // LTL formulas to be verified
-// Formula p1 holds if the first ship can always eventually enter the lock when going up.
-// ltl p1 { []<> (ship_status[0] == go_down) } /*  */  
-ltl d1 { []((doors_status.lower == closed  && ship_status[0] == go_up) -> (<>(ship_status[0] == go_up_in_lock)))}
-//ltl d2 { []((doors_status.higher == closed  && ship_status[0] == go_down) -> (<>ship_status[0] == go_down_in_lock))}
-//ltl b1 {[](doors_status.lower == open -> slide_status.higher == closed)}
-//ltl b2 {[](doors_status.higher == open -> slide_status.lower == closed)}
-//ltl c1 {[](doors_status.lower == open -> lock_water_level == low)}
-//ltl c2 {[](doors_status.higher == open -> lock_water_level == high)}
-//ltl new {[] ((len(request_high) > 0 && ship_status[0] == go_down) -> (<>(ship_status[0] == go_down_in_lock)))}
-//ltl test {[] len(request_high) == 2 }
+/* Formula d1 holds: Always if a ship requests the lower pair of doors to open and its status is go_up, the ship will eventually be inside the lock*/
+//ltl d1 { []((doors_status.lower == closed  && ship_status == go_up) -> (<>(ship_status == go_up_in_lock)))}
+/* Formula d2 holds: Always if a ship requests the higher pair of doors to open and its status is go_down, the ship will eventually be inside the lock*/
+//ltl d2 { []((doors_status.higher == closed  && ship_status == go_down) -> (<>ship_status == go_down_in_lock))}
 // Type for direction of ship.
 mtype:direction = { go_down, go_down_in_lock, go_up, go_up_in_lock, goal_reached };
 
@@ -283,15 +277,15 @@ proctype main_control() {
 proctype monitor() {
 	// an example assertion.
 	assert(0 <= ship_pos[0] && ship_pos[0] <= N);
-	//a
+	//a Assertion a holds if the lower pair of doors are the higher pair of doors are never simulaneously open
 	assert(!(doors_status.lower == open && doors_status.higher == open));
-	//b1
+	//b1 Assertion b1 holds if: when the lower pair of doors open, the higer side is closed 
 	assert(!(doors_status.lower == open) || slide_status.higher == closed);
-	//b2
+	//b2 Assertion b2 holds if: when the higher pair of doors is open ,the lower slider is closed
 	assert(!(doors_status.higher == open) || (slide_status.lower == closed));
-	//c1
+	//c1 Assertion c1 holds if: The lower pair of doors is only open when the water level in the lock is low.
 	assert(!(doors_status.lower == open) || (lock_water_level == low));
-	//c2
+	//c2 Assertion c2 holds if: The higer pair of doors is only open when the water level in the lock is high.
 	assert(!(doors_status.higher == open) || lock_water_level == high);
 }    
 
