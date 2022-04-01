@@ -15,17 +15,19 @@
 // The maximum number of ships immediately at either side of a lock.
 #define MAX 2
 
+byte lock_id = 0; 
 // LTL formulas to be verified
-// Formula p1 holds if the first ship can always eventually enter the lock when going up.
-// ltl p1 { []<> (ship_status[0] == go_down) } /*  */  
-//ltl d1 { []((doors_status.lower == closed  && ship_status[0] == go_up) -> (<>(ship_status[0] == go_up_in_lock)))}
-//ltl d2 { []((doors_status.higher == closed  && ship_status[0] == go_down) -> (<>ship_status[0] == go_down_in_lock))}
-//ltl b1 {[](doors_status.lower == open -> slide_status.higher == closed)}
-//ltl b2 {[](doors_status.higher == open -> slide_status.lower == closed)}
-//ltl c1 {[](doors_status.lower == open -> lock_water_level == low)}
-//ltl c2 {[](doors_status.higher == open -> lock_water_level == high)}   
-//ltl new {[] ((len(request_high) > 0 && ship_status[0] == go_down) -> (<>(ship_status[0] == go_down_in_lock)))}
+// ltl e1 holds if When a request is made to open the lower doors of lock i, eventually the lower doors of lock i are open.
+ltl e1 {[]((request_low[lock_id]?[true] == true) -> (<>(doors_status[lock_id].lower == open)))}
+// ltl e2 holds if When a request is made to open the higer doors of lock i, eventually the higer doors of lock i are open.
+ltl e2 {[]((request_high[lock_id]?[true] == true) -> (<>(doors_status[lock_id].higher == open)))}
+// ltl f1 holds if always eventually a request is made to open the higher doors of lock N-1 
+ltl f1 {[]<>(request_high[N-1]?[true] == true)}
+// ltl f2 holds if always eventually a requst is made to open the lower doors of lock 0
+ltl f2 {[]<>(request_low?[0])}
 //ltl test {[] len(request_high) == 2 }
+ltl e1 {[]((request_low[0]?[true] == true) -> (<>(doors_status[0].lower == open)))}
+
 // Type for direction of ship.
 mtype:direction = { go_down, go_down_in_lock, go_up, go_up_in_lock, goal_reached };
 
@@ -253,20 +255,6 @@ proctype lock_receive(byte index) {
                 change_slide_pos[index]!low; slide_pos_changed[index]?true;
             ::lock_water_level[index] == low_level -> skip;
             fi;
-            // if 
-            // :: index > 0 -> 
-            //     if
-            //     ::doors_status[index-1].higher == open ->  
-            //         change_doors_pos[index-1]!high; doors_pos_changed[index-1]?true;
-            //     ::doors_status[index-1].higher == closed -> skip;
-            //     fi; 
-            //     if
-            //     ::slide_status[index-1].higher == open ->
-            //         change_slide_pos[index-1]!high; slide_pos_changed[index-1]?true;
-            //     ::slide_status[index-1].higher == closed -> skip; 
-            //     fi;
-            // :: index == 0 -> skip; 
-            // fi; 
         change_doors_pos[index]!low; doors_pos_changed[index]?true;
         :: doors_status[index].lower == open -> skip;
         fi;
@@ -294,26 +282,11 @@ proctype lock_receive(byte index) {
         change_doors_pos[index]!high; doors_pos_changed[index]?true;
         :: doors_status[index].higher == open -> skip;
         fi;
-        // if 
-        // :: index < N-1  -> 
-        //     if
-        //     ::doors_status[index+1].lower == open ->  
-        //         change_doors_pos[index+1]!high; doors_pos_changed[index+1]?true;
-        //     ::doors_status[index+1].lower == closed -> skip;
-        //     fi; 
-        //     if
-        //     ::slide_status[index+1].lower == open ->
-        //         change_slide_pos[index+1]!high; slide_pos_changed[index+1]?true;
-        //     ::slide_status[index+1].lower == closed -> skip; 
-        //     fi;
-        // :: index == N-1 -> skip; 
-        // fi; 
         observed_high[index]?true;}        
     od;    
 } 
 
-// DUMMY main control process type. Remodel it to control the lock system and handle
-// requests of ships!
+//Main control process type
 proctype main_control() {
     byte index = 0;
     atomic { 
@@ -370,7 +343,6 @@ init {
     	do
     	:: proc < M -> ship_status[proc] = go_up; ship_pos[proc] = 0;
         	run ship(proc); proc++;
-    	:: proc > 0 && proc < M -> proc++;
     	:: proc == M -> break;
     	od;
     	// Do not change the code below It derives the number of ships per
@@ -382,4 +354,3 @@ init {
     	od;
 	}
 }
-
