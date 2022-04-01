@@ -9,24 +9,22 @@
 */
 
 // The number of locks.
-#define N	2
+#define N	3
 // The number of ships.
 #define M	2
 // The maximum number of ships immediately at either side of a lock.
 #define MAX 2
 
-byte lock_id = 0; 
 // LTL formulas to be verified
 // ltl e1 holds if When a request is made to open the lower doors of lock i, eventually the lower doors of lock i are open.
-ltl e1 {[]((request_low[lock_id]?[true] == true) -> (<>(doors_status[lock_id].lower == open)))}
+//ltl e1 {[]((request_low[0]?[true] == true) -> (<>(doors_status[0].lower == open)))}
 // ltl e2 holds if When a request is made to open the higer doors of lock i, eventually the higer doors of lock i are open.
-ltl e2 {[]((request_high[lock_id]?[true] == true) -> (<>(doors_status[lock_id].higher == open)))}
+//ltl e2 {[]((request_high[0]?[true] == true) -> (<>(doors_status[0].higher == open)))}
 // ltl f1 holds if always eventually a request is made to open the higher doors of lock N-1 
-ltl f1 {[]<>(request_high[N-1]?[true] == true)}
+//ltl f1 {[]<>(request_high[N-1]?[true] == true)}
 // ltl f2 holds if always eventually a requst is made to open the lower doors of lock 0
-ltl f2 {[]<>(request_low?[0])}
-//ltl test {[] len(request_high) == 2 }
-ltl e1 {[]((request_low[0]?[true] == true) -> (<>(doors_status[0].lower == open)))}
+//ltl f2 {[]<>(request_low[0]?[true] == true)}
+
 
 // Type for direction of ship.
 mtype:direction = { go_down, go_down_in_lock, go_up, go_up_in_lock, goal_reached };
@@ -321,9 +319,6 @@ init {
 	atomic {
     	//run monitor();
     	run main_control();
-    	// In the code below, the individual locks are initialised.
-    	// The assumption here is that N == 1. When generalising the model for
-    	// multiple locks, make sure that the do-statement is altered
     	proc = 0;
     	do
     	:: proc < N ->
