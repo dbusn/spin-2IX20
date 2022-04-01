@@ -17,9 +17,9 @@
 
 // LTL formulas to be verified
 /* Formula d1 holds: Always if a ship requests the lower pair of doors to open and its status is go_up, the ship will eventually be inside the lock*/
-//ltl d1 { []((doors_status.lower == closed  && ship_status == go_up) -> (<>(ship_status == go_up_in_lock)))}
+ltl d1 { []((request_low?[true] && ship_status == go_up) -> (<>(ship_status == go_up_in_lock)))}
 /* Formula d2 holds: Always if a ship requests the higher pair of doors to open and its status is go_down, the ship will eventually be inside the lock*/
-//ltl d2 { []((doors_status.higher == closed  && ship_status == go_down) -> (<>ship_status == go_down_in_lock))}
+ltl d2 { []((request_high?[true]&& ship_status == go_down) -> (<>ship_status == go_down_in_lock))}
 // Type for direction of ship.
 mtype:direction = { go_down, go_down_in_lock, go_up, go_up_in_lock, goal_reached };
 
